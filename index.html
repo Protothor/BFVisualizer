@@ -90,6 +90,7 @@ button{
   width: fit-content;
   margin: auto;
   padding: 50px;
+  max-width: 80vh;
 }
 #output{
   max-height: 70vh;
@@ -143,6 +144,8 @@ set = () => {
   input = $("input").value
   instructions=$("instructions")
   memory=$("memory")
+  $("output").replaceChildren()
+  $("print").replaceChildren()
   instructions.replaceChildren(...program.split("").map((v,i)=>{
     x=_("div")
     x.setAttribute('i', 'i')
@@ -214,7 +217,7 @@ inputGoing = () => {
     modal();
     document.addEventListener("keydown", event)
   }
-  return input[incoming++] || 0
+  return int(input.codePointAt(incoming++)) || 0
 }
 func = {
   ">": () => pointer++,
@@ -325,11 +328,11 @@ setInput = () => {
         <input id="256" type="radio" name="bitdepth" value="256" onclick="setBDepth()"/>
       </div>
       <div>
-        <label for="text" b>Program</label>
+        <label for="text">Program</label>
         <textarea id="text" type="text"></textarea>
       </div>
       <div>
-        <label for="input" b>Input</label>
+        <label for="input">Input</label>
         <input id="input" type="text"/>
         <label for="wait">Hold for input</label>
         <input id="wait" type="radio" name="inputType" value="wait" onclick="setInput()" checked />
@@ -338,7 +341,7 @@ setInput = () => {
         <button class="center" id="set" type="button" onclick="set()">Set Program</button>
       </div>
       <div class="sideBySide">
-        <label for="speed" b>Instruction Delay</label>
+        <label for="speed">Instruction Delay</label>
         <input id="speed" type="range" min="0" max="200"/>
         <div class="spread">
           <span>0ms</span>
@@ -346,7 +349,7 @@ setInput = () => {
         </div>
       </div>
       <div class="sideBySide">
-        <label for="ipt" b>Instructions per Tick</label>
+        <label for="ipt">Instructions per Tick</label>
         <input id="ipt" value="1" type="range" min="1" max="100" onchange="ipt()"/>
         <span id="outipt">1</span>
       </div>
@@ -354,15 +357,15 @@ setInput = () => {
       <button class="center" id="step" type="step" onclick="step()">Step</button>
     </div>
     <div>
-      <label for="instructions" b>Instructions</label>
+      <label>Instructions</label>
       <div id="instructions"></div>
     </div>
     <div>
-      <label for="memory" b>Memory</label>
+      <label>Memory</label>
       <div id="memory"></div>
     </div>
     <div>
-      <label for="print" b>Output</label>
+      <label>Output</label>
       <div id="print"></div>
     </div>
   </div>
