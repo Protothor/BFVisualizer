@@ -1,0 +1,353 @@
+<html>
+<head>
+<style>
+* {
+  color-scheme: light dark;
+  font-family: 'Courier New', Courier, monospace;
+  margin: 2px 0;
+}
+body{
+  margin: 0;
+}
+#main{
+  max-width: 80vw;
+  margin:0 auto;
+  display:flex;
+  flex-direction: column;
+}
+textarea{
+  height: fit-content;
+  max-width: 100%;
+  width: 100%;
+}
+input{
+  width: 100%;
+}
+input[type="radio"] {
+  width:unset;
+}
+.sideBySide {
+  width: 49%;
+  display:inline-block;
+}
+label[b]{
+  display:block;
+  width:max-content;
+}
+div[i],div[m] {
+  display: inline-block;
+  margin: 2px;
+  background: light-dark(#ddd, #333);
+  width: 20px;
+  height: 20px;
+  align-content: center;
+  text-align: center;
+  font-size: 18px;
+  border-radius: 3px;
+}
+div[m] {
+  width: fit-content;
+  padding: 0 2px;
+}
+button{
+  padding: 5px 10px;
+
+}
+#controls{
+  text-align: center;
+  min-height: fit-content;
+}
+#instructions{
+  display:flex;
+  flex:1;
+  flex-wrap: wrap;
+  overflow-y:scroll;
+  max-height: 40vh;
+}
+#memory{
+  height:fit-content;
+}
+#print{
+  height:fit-content;
+  word-break: break-all;
+}
+.spread{
+  display: flex;
+  justify-content: space-between;
+}
+#modal{
+  display: grid;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0.5, 0.5, 0.5, 0.5);
+  align-items: center;
+}
+#text-box{
+  background-color: light-dark(#FFF,#222);
+  width: fit-content;
+  margin: auto;
+  padding: 50px;
+}
+#output{
+  max-height: 70vh;
+  overflow-y: scroll;
+  word-break: break-all;
+}
+</style>
+<script>
+$ = (a) => document.getElementById(a)
+_ = (a) => document.createElement(a)
+bitdepth=2**8
+isPlaying = false
+output = ""
+array = []
+pointer = 0
+cursor = -1
+program = ""
+input = ""
+incoming = 0
+instructions = []
+memory = []
+inputType = true
+hold=false
+int=(i)=>{
+  if(bitdepth>Number.MAX_SAFE_INTEGER){
+    return BigInt(i)
+  }
+  return Number(i)
+}
+set = () => {
+  isPlaying = false
+  $("play").innerHTML = "Play"
+  output = ""
+  array = []
+  pointer = 0
+  cursor = -1
+  incoming = 0
+  program = $("text").value.replaceAll(/[^\>\<\+\-\.\,\[\]]/g,'')
+  input = $("input").value
+  instructions=$("instructions")
+  memory=$("memory")
+  instructions.replaceChildren(...program.split("").map((v,i)=>{
+    x=_("div")
+    x.setAttribute('i', 'i')
+    x.id=`i${i}`
+    x.innerHTML = v
+    return x
+  }))
+  memory.replaceChildren((() => {
+    let x = _("div")
+    x.setAttribute('m', 'm')
+    x.setAttribute
+    x.id=`m0`
+    x.innerHTML = "0"
+    return x
+  })())
+}
+iptVal=1
+ipt=()=>{
+  iptVal=parseInt($("ipt").value)
+  $("outipt").innerHTML=iptVal
+}
+print = (char) => {
+  output+=char
+  $("print").append(char === '\n' ? document.createElement("br") : char)
+  let el = $("output")
+  el.append(char === '\n' ? document.createElement("br") : char)
+  el.scrollTo(x,el.clientHeight)
+}
+scrollTo = (stopAt,increaseDepth,direction) => {
+  let depth=1
+  while (depth > 0 || program[cursor] !== stopAt) {
+    cursor += direction
+    if (program[cursor] === increaseDepth)++depth
+    if (program[cursor] === stopAt)--depth
+  }
+}
+incDec = (v) => {
+  return int((int(bitdepth) + int(array[pointer] || 0) + int(v)) % int(bitdepth))
+}
+modal = (show = true) => {
+  $("modal").style.visibility = show ? "visible" : "hidden";
+}
+event = (e) => {
+  let { key } = e
+  if(key.length === 1 || key === 'Enter') {
+    let keyCode = int((key==='Enter'?'\n':key).codePointAt(0)) % int(bitdepth)
+    array[pointer] = keyCode
+    document.removeEventListener("keydown", event)
+    modal(hold = false)
+    updateVisuals()
+    loop()
+  }
+}
+inputGoing = () => {
+  if(inputType) {
+    hold = true
+    modal();
+    document.addEventListener("keydown", event)
+  }
+  return input[incoming++] || 0
+}
+func = {
+  ">": () => pointer++,
+  "<": () => pointer=--pointer<0?0:pointer,
+  "+": () => array[pointer] = incDec(1),
+  "-": () => array[pointer] = incDec(-1),
+  ".": () => print(String.fromCharCode(array[pointer])),
+  ",": () => array[pointer] = int(inputGoing()),
+  "[": () => {
+    if (!array[pointer]) scrollTo(']','[',1)
+  },
+  "]": () => {
+    if (array[pointer]) scrollTo('[',']',-1)
+  }
+}
+updateVisuals = () => {
+  let speed = Math.max(parseInt($("speed").value,10) * 2, 50)
+  $(`i${cursor}`).animate([
+    { backgroundColor: '#f00' },
+  ], {
+    duration: speed,
+    iterations: 1
+  })
+  let end = memory.children.length
+  while(memory.children.length < pointer + 1) {
+      memory.appendChild((() => {
+      let x = _("div")
+      x.setAttribute('m', 'm')
+      x.id=`m${end++}`
+      x.innerHTML = "0"
+      return x
+    })())
+  }
+  let memCell = $(`m${pointer}`)
+  memCell.animate(  [
+    { backgroundColor: '#f00' },
+  ], {
+    duration: speed,
+    iterations: 1
+  })
+  memCell.innerHTML = array[pointer] || 0
+}
+instruction = () => {
+  let nextInstruction = program[++cursor]
+  if (nextInstruction) {
+    func[nextInstruction]()
+    updateVisuals()
+  } else {
+    isPlaying = false
+    hold = false
+    $("play").innerHTML = "Play"
+  }
+}
+play = () => {
+  if(!hold){
+    isPlaying = !isPlaying
+    $("play").innerHTML = isPlaying ? "Stop" : "Play"
+    if(isPlaying) {
+      loop()
+    }
+  }
+}
+step = () => {
+  if(!hold){
+    if(isPlaying) {
+      isPlaying = false
+      $("play").innerHTML = "Play"
+    } else {
+      instruction()
+    }
+  }
+}
+loop = () => {
+  if(isPlaying) {
+    for(let i = 0; i < iptVal && !hold; i++){
+      instruction()
+    }
+    if(!hold){
+      setTimeout(loop,parseInt($("speed").value,10))
+    }
+  }
+}
+setBDepth = () => {
+  const dep = document.querySelector('input[name="bitdepth"]:checked').value
+  bitdepth = int(2n**BigInt(parseInt(dep,10)))
+}
+setInput = () => {
+  const dep = document.querySelector('input[name="inputType"]:checked').value
+  inputType = dep === "wait"
+}
+</script>
+</head>
+<body>
+  <div id="main">
+    <div id="controls">
+      <div>
+        <label for="8">8-bit</label>
+        <input id="8" type="radio" name="bitdepth" value="8" onclick="setBDepth()" checked/>
+        <label for="16">16-bit</label>
+        <input id="16" type="radio" name="bitdepth" value="16" onclick="setBDepth()"/>
+        <label for="32">32-bit</label>
+        <input id="32" type="radio" name="bitdepth" value="32" onclick="setBDepth()"/>
+        <label for="64">64-bit</label>
+        <input id="64" type="radio" name="bitdepth" value="64" onclick="setBDepth()"/>
+        <label for="128">128-bit</label>
+        <input id="128" type="radio" name="bitdepth" value="128" onclick="setBDepth()"/>
+        <label for="256">256-bit</label>
+        <input id="256" type="radio" name="bitdepth" value="256" onclick="setBDepth()"/>
+      </div>
+      <div>
+        <label for="text" b>Program</label>
+        <textarea id="text" type="text"></textarea>
+      </div>
+      <div>
+        <label for="input" b>Input</label>
+        <input id="input" type="text"/>
+        <label for="wait">Hold for input</label>
+        <input id="wait" type="radio" name="inputType" value="wait" onclick="setInput()" checked />
+        <label for="calc">Use provided input</label>
+        <input id="calc" type="radio" name="inputType" value="calc" onclick="setInput()" />
+        <button class="center" id="set" type="button" onclick="set()">Set Program</button>
+      </div>
+      <div class="sideBySide">
+        <label for="speed" b>Instruction Delay</label>
+        <input id="speed" type="range" min="0" max="200"/>
+        <div class="spread">
+          <span>0ms</span>
+          <span>200ms</span>
+        </div>
+      </div>
+      <div class="sideBySide">
+        <label for="ipt" b>Instructions per Tick</label>
+        <input id="ipt" value="1" type="range" min="1" max="100" onchange="ipt()"/>
+        <span id="outipt">1</span>
+      </div>
+      <button class="center" id="play" type="button" onclick="play()">Play</button>
+      <button class="center" id="step" type="step" onclick="step()">Step</button>
+    </div>
+    <div>
+      <label for="instructions" b>Instructions</label>
+      <div id="instructions"></div>
+    </div>
+    <div>
+      <label for="memory" b>Memory</label>
+      <div id="memory"></div>
+    </div>
+    <div>
+      <label for="print" b>Output</label>
+      <div id="print"></div>
+    </div>
+  </div>
+  <div id="modal" style="visibility:hidden;">
+    <div id="text-box">
+      <p>The program currently reads:</p>
+      <div id="output"></div>
+      <p>Please type an input</p>
+    </div>
+  </div>
+</body>
+</html>
